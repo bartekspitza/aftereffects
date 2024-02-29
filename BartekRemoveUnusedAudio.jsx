@@ -3,10 +3,10 @@ app.beginUndoGroup('Remove Unused Audio Files');
 var project = app.project;
 var unusedAudioFiles = [];
 
-// Function to check if an item is used in any composition
+// Function to recursively check if an item is used in any composition
 function isItemUsed(item) {
-    for (var i = 1; i <= project.rootFolder.numItems; i++) {
-        var comp = project.rootFolder.item(i);
+    for (var i = 1; i <= project.numItems; i++) {
+        var comp = project.item(i);
         if (comp instanceof CompItem) {
             for (var j = 1; j <= comp.numLayers; j++) {
                 var layer = comp.layer(j);
@@ -17,23 +17,23 @@ function isItemUsed(item) {
     return false;
 }
 
-// Main script
-if (project) {
-    for (var i = 1; i <= project.rootFolder.numItems; i++) {
-        var item = project.rootFolder.item(i);
-        if (item instanceof FootageItem && item.hasAudio && !isItemUsed(item)) {
+// Function to recursively search for unused audio files in a given folder
+function searchFolder(folder) {
+    for (var i = 1; i <= folder.numItems; i++) {
+        var item = folder.item(i);
+        if (item instanceof FolderItem) {
+            searchFolder(item); // Recursive call for subfolders
+        } else if (item instanceof FootageItem && item.hasAudio && !isItemUsed(item)) {
             unusedAudioFiles.push(item);
         }
     }
+}
 
-    // Remove unused audio files
-    for (var i = 0; i < unusedAudioFiles.length; i++) {
-        unusedAudioFiles[i].remove();
-    }
 
-    alert(unusedAudioFiles.length + ' unused audio files were removed.');
-} else {
-    alert('No project found.');
+// Main script
+searchFolder(project.rootFolder);
+for (var i = 0; i < unusedAudioFiles.length; i++) {
+    unusedAudioFiles[i].remove();
 }
 
 app.endUndoGroup();
