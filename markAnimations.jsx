@@ -49,16 +49,14 @@
     }
   }
 
-  function getSelectedLayerComp() {
+  function getSelectedLayer() {
     var activeItem = app.project.activeItem;
     if (
       activeItem instanceof CompItem &&
       activeItem.selectedLayers.length === 1
     ) {
       var selectedLayer = activeItem.selectedLayers[0];
-      if (selectedLayer.source instanceof CompItem) {
-        return selectedLayer.source;
-      }
+      return selectedLayer;
     }
     return null;
   }
@@ -67,9 +65,10 @@
   function main() {
     app.beginUndoGroup("Adjust Precomp Timings");
 
-    var precomp = getSelectedLayerComp();
-    if (!precomp) {
-      alert("No precomp selected.");
+    var selectedLayer = getSelectedLayer();
+    var precomp = selectedLayer.source;
+    if (selectedLayer === null || !(precomp instanceof CompItem)) {
+      alert("A precomp must be selected.");
       app.endUndoGroup();
       return;
     }
@@ -82,19 +81,7 @@
       return;
     }
 
-    var allComps = app.project.items;
-    for (var i = 1; i <= allComps.length; i++) {
-      if (allComps[i] instanceof CompItem) {
-        var comp = allComps[i];
-        for (var j = 1; j <= comp.layers.length; j++) {
-          var layer = comp.layers[j];
-
-          if (layer.source !== null && layer.source.name === precomp.name) {
-            createKeyframes(layer, precomp.markerProperty);
-          }
-        }
-      }
-    }
+    createKeyframes(selectedLayer, precomp.markerProperty);
 
     app.endUndoGroup();
   }
