@@ -12,10 +12,11 @@ if (activeComp && activeComp instanceof CompItem) {
     for (var i = 1; i <= markers.numKeys; i++) {
         var marker = markers.keyValue(i);
 
-        var isEvenPair = Math.floor((i - 1) / 2) % 2 === 0
+        var isEvenPair = Math.floor((i - 1) / 2) % 2 === 0;
+        var markerNumber = Math.floor((i+1)/2);
 
         // Replace marker with a coloured one
-        var newMarker = new MarkerValue(marker.comment);
+        var newMarker = new MarkerValue(markerNumber);
         newMarker.label = isEvenPair ? color1Index : color2Index;
         markers.setValueAtKey(i, newMarker);
     }
