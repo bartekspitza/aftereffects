@@ -1,7 +1,9 @@
 var activeComp = app.project.activeItem;
+var color1Index = 1; // This is the index of the label to choose from. It is based on the label colors one has defined in Preferences
+var color2Index = 2;
 
 if (activeComp && activeComp instanceof CompItem) {
-    app.beginUndoGroup("Color Markers");
+    app.beginUndoGroup("Color Marker Pairs");
 
     // Get the markers from the composition
     var markers = activeComp.markerProperty;
@@ -14,7 +16,7 @@ if (activeComp && activeComp instanceof CompItem) {
 
         // Replace marker with a coloured one
         var newMarker = new MarkerValue(marker.comment);
-        newMarker.label = isEvenPair ? 1 : 2;
+        newMarker.label = isEvenPair ? color1Index : color2Index;
         markers.setValueAtKey(i, newMarker);
     }
 
