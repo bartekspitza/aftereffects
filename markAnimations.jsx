@@ -49,39 +49,33 @@
     }
   }
 
-  function getSelectedLayer() {
-    var activeItem = app.project.activeItem;
-    if (
-      activeItem instanceof CompItem &&
-      activeItem.selectedLayers.length === 1
-    ) {
-      var selectedLayer = activeItem.selectedLayers[0];
-      return selectedLayer;
-    }
-    return null;
-  }
-
   // Main function
   function main() {
+
+    var activeItem = app.project.activeItem;
+    if (! activeItem instanceof CompItem) {
+      alert("No opened composition.");
+      return;
+    }
+
     app.beginUndoGroup("Adjust Precomp Timings");
 
-    var selectedLayer = getSelectedLayer();
-    var precomp = selectedLayer.source;
-    if (selectedLayer === null || !(precomp instanceof CompItem)) {
-      alert("A precomp must be selected.");
-      app.endUndoGroup();
-      return;
-    }
+    // Create keyframes for each selected layer
+    for (var i = 0; i < activeItem.selectedLayers.length; i++) {
+      var selectedLayer = activeItem.selectedLayers[i];
+      var precomp = selectedLayer.source;
+      if (!(precomp instanceof CompItem)) continue;
 
-    var markers = precomp.markerProperty;
-    if (markers.numKeys < 2 || markers.numKeys % 2 !== 0) {
-      alert(
-        "The precomp must have at least two markers and an even number of markers."
-      );
-      return;
-    }
+      var markers = precomp.markerProperty;
+      if (markers.numKeys < 2 || markers.numKeys % 2 !== 0) {
+        alert(
+          "The precomp must have at least two markers and an even number of markers."
+        );
+        return;
+      }
 
-    createKeyframes(selectedLayer, precomp.markerProperty);
+      createKeyframes(selectedLayer, precomp.markerProperty);
+    }
 
     app.endUndoGroup();
   }
