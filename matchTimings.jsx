@@ -169,7 +169,8 @@
         if (markerIndx === -1) return;
 
         markerIndx++;
-        while (markerIndx <= layer.marker.numKeys) {
+        var markerKeys = layer.marker.numKeys
+        while (markerIndx <= markerKeys) {
             var timeDiff = secondsFromMatchingMarker(layer.marker, markerIndx);
             if (timeDiff === -1) {
                 markerIndx++;
@@ -185,7 +186,7 @@
 
             moveKeysFromIndex(timeRemap, keyIndx, timeDiff);
 
-            for (var i = markerIndx; i <= layer.marker.numKeys; i++) {
+            for (var i = markerIndx; i <= markerKeys; i++) {
                 var marker = layer.marker.keyValue(i);
                 var newMarkerStart = layer.marker.keyTime(i) + timeDiff;
                 layer.marker.removeKey(i);
