@@ -1,8 +1,8 @@
 // This script looks at a precomp's markers and creates keyframes for each animation using time remapping
 {
     var secondsBetweenAnims = 2;
-    var keyLabel1 = 3;
-    var keyLabel2 = 8;
+    var keyLabel1 = 8;
+    var keyLabel2 = 3;
 
     // Iterates over every time remap marker and sets HOLD on every other to make it easier to distinguish animation-starts
     // Colorizes the keyframes such that every other pair is a different label
@@ -10,7 +10,7 @@
         var pair = 0;
         for (var i = 1; i <= property.numKeys; i += 1) {
             if (i % 2 !== 0) pair += 1;
-            property.setLabelAtKey(i, (pair % 2 === 0) ? keyLabel1 : keyLabel2);
+            property.setLabelAtKey(i, pair % 2 === 0 ? keyLabel1 : keyLabel2);
         }
     }
 
@@ -41,8 +41,14 @@
         for (var i = 1; i <= markers.numKeys; i += 2) {
             var markerStart = markers.keyTime(i); // The time of the marker that signals the start of the animation
             var markerEnd = markers.keyTime(i + 1); // The time of the marker that signals the end of the animation
+            var marker = markers.keyValue(i);
 
             var duration = markerEnd - markerStart; // The duration of the animation
+
+            // Add the source marker to the layer
+            if (marker.comment.length > 1) {
+                layer.marker.setValueAtTime(lastEnd, marker);
+            }
 
             timeRemap.setValueAtTime(lastEnd, markerStart);
             timeRemap.setValueAtTime(lastEnd + duration, markerEnd);
@@ -51,7 +57,6 @@
             lastEnd += duration;
         }
 
-        //setToggleHoldOnEveryOtherKey(timeRemap, 1);
         colorizeKeys(timeRemap);
     }
 
@@ -64,9 +69,15 @@
         for (var i = startIndx; i <= markers.numKeys; i += 2) {
             var markerStart = markers.keyTime(i); // The time of the marker that signals the start of the animation
             var markerEnd = markers.keyTime(i + 1); // The time of the marker that signals the end of the animation
+            var marker = markers.keyValue(i);
 
             var duration = markerEnd - markerStart; // The duration of the animation
             lastEnd += secondsBetweenAnims;
+
+            // Add the source marker to the layer
+            if (marker.comment.length > 1) {
+                layer.marker.setValueAtTime(lastEnd, marker);
+            }
 
             timeRemap.setValueAtTime(lastEnd, markerStart);
             timeRemap.setValueAtTime(lastEnd + duration, markerEnd);
@@ -74,7 +85,6 @@
             lastEnd += duration;
         }
 
-        //setToggleHoldOnEveryOtherKey(timeRemap, startIndx);
         colorizeKeys(timeRemap);
     }
 

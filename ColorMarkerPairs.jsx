@@ -1,6 +1,6 @@
 var activeComp = app.project.activeItem;
 var color1Index = 1; // This is the index of the label to choose from. It is based on the label colors one has defined in Preferences
-var color2Index = 2;
+var color2Index = 7;
 
 if (activeComp && activeComp instanceof CompItem) {
     app.beginUndoGroup("Color Marker Pairs");
@@ -18,6 +18,7 @@ if (activeComp && activeComp instanceof CompItem) {
         // Replace marker with a coloured one
         var newMarker = new MarkerValue(markerNumber);
         newMarker.label = isEvenPair ? color1Index : color2Index;
+        newMarker.comment = marker.comment.length > 0 ? marker.comment : markerNumber;
         markers.setValueAtKey(i, newMarker);
     }
 
