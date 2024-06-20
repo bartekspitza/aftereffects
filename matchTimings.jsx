@@ -26,7 +26,7 @@
 
     function alignLayerByFirstMatchingMarker(layer) {
         var markers = layer.marker;
-        for (var i = 1; i <= markers.numKeys; i++) {
+        for (var i = voiceMarkerIndex; i <= markers.numKeys; i++) {
             var markerComment = markers.keyValue(i).comment;
             var markerTime = markers.keyTime(i);
             var timeDiff = secondsFromMatchingMarker(markerComment, markerTime);
@@ -47,9 +47,10 @@
         if (markerComment.length === 0) return -1;
 
         var voiceMarkers = voiceoverLayer.marker;
-        for (var i = 1; i <= voiceMarkers.numKeys; i++) {
+        for (var i = voiceMarkerIndex; i <= voiceMarkers.numKeys; i++) {
             var voiceMarker = voiceMarkers.keyValue(i);
             if (voiceMarker.comment === markerComment) {
+                voiceMarkerIndex++;
                 return voiceMarkers.keyTime(i) - markerTime;
             }
         }
