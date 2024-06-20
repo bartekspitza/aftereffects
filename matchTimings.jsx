@@ -3,98 +3,32 @@
     var comp = app.project.activeItem;
     var voiceoverLayer = comp.layer(AUDIO_TRACK_NAME);
 
-    // Aligns a layer without time remap such that its first marker that has a matching marker in the voiceover layer
-    // aligns with the matching marker
-    function alignAnimations(layer) {
-        var layerMarkers = layer.marker;
-        var voiceMarkers = voiceoverLayer.marker;
-
-        for (var i = 1; i <= layerMarkers.numKeys; i++) {
-            var marker = layerMarkers.keyValue(i);
-
-            for (var j = 1; j <= voiceMarkers.numKeys; j++) {
-                var voiceMarker = voiceMarkers.keyValue(j);
-
-                // If we find a matching marker in the audio
-                // Adjust the layer's startTime such that the markers will align
-                if (voiceMarker.comment === marker.comment) {
-                    var voiceStart = voiceMarkers.keyTime(j);
-                    var layerStart = layerMarkers.keyTime(i);
-
-                    var timeDiff = voiceStart - layerStart;
-
-                    layer.startTime += timeDiff;
-                    break;
-                }
-            }
+    function getProperties(layer) {
+        var properties = [];
+        if (layer.timeRemapEnabled) {
+            properties.push(layer.property('ADBE Time Remapping'));
         }
+        if (layer.transform.position.numKeys > 0) {
+            properties.push(layer.transform.position);
+        }
+        if (layer.transform.scale.numKeys > 0) {
+            properties.push(layer.transform.scale);
+        }
+        if (layer.transform.opacity.numKeys > 0) {
+            properties.push(layer.transform.opacity);
+        }
+        if (layer.transform.rotation.numKeys > 0) {
+            properties.push(layer.transform.rotation);
+        }
+        return properties;
     }
 
-    function alertMarkerDoesNotStartAnimation(marker) {
-        alert("Marker '" + marker.comment + "' does not start an animation");
-    }
-
-    function moveMarker(markerProperty, markerIndx, shiftBySeconds) {
-        var marker = markerProperty.keyValue(markerIndx);
-        var newMarkerStart =
-            markerProperty.keyTime(markerIndx) + shiftBySeconds;
-        markerProperty.removeKey(markerIndx);
-        markerProperty.setValueAtTime(newMarkerStart, marker);
-    }
-
-    function moveKeyframesPair(property, key1Indx, key2Indx, shiftBySeconds) {
-        var key1 = property.keyValue(key1Indx);
-        var key2 = property.keyValue(key2Indx);
-        var key1Start = property.keyTime(key1Indx);
-        var key2Start = property.keyTime(key2Indx);
-
-        // Remember the interpolation types
-        var key1InInterpolation = property.keyInInterpolationType(key1Indx);
-        var key1OutInterpolation = property.keyOutInterpolationType(key1Indx);
-        var key2InInterpolation = property.keyInInterpolationType(key2Indx);
-        var key2OutInterpolation = property.keyOutInterpolationType(key2Indx);
-
-        // Shift the keyframes
-        property.removeKey(key1Indx);
-        property.removeKey(key1Indx);
-        property.setValueAtTime(key1Start + shiftBySeconds, key1);
-        property.setValueAtTime(key2Start + shiftBySeconds, key2);
-
-        // Set the interpolation types
-        property.setInterpolationTypeAtKey(
-            key1Indx,
-            key1InInterpolation,
-            key1OutInterpolation
-        );
-        property.setInterpolationTypeAtKey(
-            key2Indx,
-            key2InInterpolation,
-            key2OutInterpolation
-        );
-    }
-
-    function checkAllLayerMarkersStartAnAnimation(layer) {
-        // Check if all markers start an animation
+    function alignLayerByFirstMatchingMarker(layer) {
         var markers = layer.marker;
-        var timeRemap = layer.property('ADBE Time Remapping');
         for (var i = 1; i <= markers.numKeys; i++) {
+            var markerComment = markers.keyValue(i).comment;
             var markerTime = markers.keyTime(i);
-            var timeRemapKeyTime = timeRemap.keyTime(i * 2 - 1);
-
-            if (markerTime !== timeRemapKeyTime) {
-                throw new Error(
-                    layer.name +
-                        ': Marker at index ' +
-                        i +
-                        ' does not start an animation'
-                );
-            }
-        }
-    }
-
-    function movelayer(layer) {
-        for (var i = 1; i <= layer.marker.numKeys; i++) {
-            var timeDiff = secondsFromMatchingMarker(layer.marker, i);
+            var timeDiff = secondsFromMatchingMarker(markerComment, markerTime);
             if (timeDiff === -1) continue;
 
             layer.startTime += timeDiff;
@@ -108,15 +42,13 @@
      * Returns the number of seconds from the supplied marker to the first matching marker
      * of the voiceover layer. If none is found, returns -1.
      */
-    function secondsFromMatchingMarker(markers, markerIndx) {
-        var markerTime = markers.keyTime(markerIndx);
-        var marker = markers.keyValue(markerIndx);
-        if (marker.comment.length === 0) return -1;
+    function secondsFromMatchingMarker(markerComment, markerTime) {
+        if (markerComment.length === 0) return -1;
 
         var voiceMarkers = voiceoverLayer.marker;
         for (var i = 1; i <= voiceMarkers.numKeys; i++) {
             var voiceMarker = voiceMarkers.keyValue(i);
-            if (voiceMarker.comment === marker.comment) {
+            if (voiceMarker.comment === markerComment) {
                 return voiceMarkers.keyTime(i) - markerTime;
             }
         }
@@ -125,75 +57,66 @@
     }
 
     /**
-     * Returns the index range, i.e. [1, 4], of the time remap keys that are in the interval [startTime, endTime].
+     * Moves all keys that comes after the supplied time by the specified amount of seconds
      */
-    function timeRemapIndexRangeInInterval(timeRemap, startTime, endTime) {
-        var min = -1;
-        var max = -1;
-
-        for (var i = 1; i <= timeRemap.numKeys; i++) {
-            var timeRemapKeyTime = timeRemap.keyTime(i);
-            if (timeRemapKeyTime < startTime) continue;
-            if (timeRemapKeyTime > endTime) continue;
-
-            if (min === -1) {
-                min = i;
-            }
-            max = i;
-        }
-
-        if (min === -1) return [-1, -1];
-
-        return [min, max];
-    }
-
-    function moveKeysFromIndex(timeRemap, keyIndx, shiftBySeconds) {
+    function shiftLayerKeysFromTime(layer, fromSeconds, shiftBySeconds) {
         // deselect all layers
         for (var i = 1; i <= comp.numLayers; i++) {
             comp.layer(i).selected = false;
         }
 
-        for (var i = keyIndx; i <= timeRemap.numKeys; i++) {
-            timeRemap.setSelectedAtKey(i,true);  // select first keyframe
+        // Select all keys at or after the time
+        var properties = getProperties(layer);
+        var earliestKeyTime = Number.MAX_VALUE; // If there's any gap between the marker and the first key, we make sure to keep this gap
+        for (var i = 0; i < properties.length; i++) {
+            var property = properties[i];
+
+            for (var j = property.numKeys; j >= 1; j--) {
+                var keyTime = property.keyTime(j);
+                if (keyTime < fromSeconds) break;
+
+                if (keyTime < earliestKeyTime) earliestKeyTime = keyTime;
+                property.setSelectedAtKey(j, true);
+            }
         }
 
-        comp.time = timeRemap.keyTime(keyIndx) + shiftBySeconds;
-        app.executeCommand(app.findMenuCommandId("Cut"));
-        app.executeCommand(app.findMenuCommandId("Paste"));
+        app.executeCommand(app.findMenuCommandId("Cut"));   // Cut
+        comp.time = earliestKeyTime + shiftBySeconds;       // Move playhead
+        app.executeCommand(app.findMenuCommandId("Paste")); // Paste
     }
 
+    /**
+     * Main function that does the work
+     */
     function alignKeyedAnimations(layer) {
-        var timeRemap = layer.property('ADBE Time Remapping');
+        // The first alignment happens by moving the entire layer
+        var marker = alignLayerByFirstMatchingMarker(layer);
+        if (marker === -1) return;
 
-        var markerIndx = movelayer(layer);
-        if (markerIndx === -1) return;
-
-        markerIndx++;
-        var markerKeys = layer.marker.numKeys
-        while (markerIndx <= markerKeys) {
-            var timeDiff = secondsFromMatchingMarker(layer.marker, markerIndx);
-            if (timeDiff === -1) {
-                markerIndx++;
+        // Now we check the markers after that
+        marker++;
+        var markerKeys = layer.marker.numKeys // Important to lock down this number as we modify the array later
+        while (marker <= markerKeys) {
+            // Find out the time difference between the marker and the matching voice marker
+            var markerTime = layer.marker.keyTime(marker);
+            var markerComment = layer.marker.keyValue(marker).comment;
+            var timeDiff = secondsFromMatchingMarker(markerComment, markerTime);
+            if (timeDiff === -1) { // If timeDiff is -1, the voice layer doesnt have a matching marker
+                marker++;
                 continue;
             }
 
-            var markerTime = layer.marker.keyTime(markerIndx);
-            var keyIndx = timeRemap.nearestKeyIndex(markerTime)
-            if (timeRemap.keyTime(keyIndx) < markerTime) {
-                markerIndx++;
-                continue;
-            }
+            // Shift the keys 
+            shiftLayerKeysFromTime(layer, markerTime, timeDiff);
 
-            moveKeysFromIndex(timeRemap, keyIndx, timeDiff);
-
-            for (var i = markerIndx; i <= markerKeys; i++) {
+            // Move markers accordingly
+            for (var i = marker; i <= markerKeys; i++) {
                 var marker = layer.marker.keyValue(i);
                 var newMarkerStart = layer.marker.keyTime(i) + timeDiff;
                 layer.marker.removeKey(i);
                 layer.marker.setValueAtTime(newMarkerStart, marker);
             }
-
-            markerIndx++;
+            marker++;
         }
     }
 
@@ -212,12 +135,7 @@
             var isPrecomp = layer.source instanceof CompItem;
             if (!isPrecomp) continue;
 
-            if (layer.timeRemapEnabled) {
-                //checkAllLayerMarkersStartAnAnimation(layer);
-                alignKeyedAnimations(layer);
-            } else {
-                alignAnimations(layer);
-            }
+            alignKeyedAnimations(layer);
         }
         app.endUndoGroup();
     }
