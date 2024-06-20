@@ -24,6 +24,20 @@
         return properties;
     }
 
+    function secondsToOutPointFromLastKey(layer) {
+        var properties = getProperties(layer);
+        var lastKeyTime = Number.MIN_VALUE;
+        for (var i = 0; i < properties.length; i++) {
+            var property = properties[i];
+            for (var j = property.numKeys; j >= 1; j--) {
+                var keyTime = property.keyTime(j);
+                if (keyTime > lastKeyTime) lastKeyTime = keyTime;
+            }
+        }
+
+        return layer.outPoint - lastKeyTime;
+    }
+
     function alignLayerByFirstMatchingMarker(layer) {
         var markers = layer.marker;
         for (var i = voiceMarkerIndex; i <= markers.numKeys; i++) {
@@ -82,9 +96,9 @@
             }
         }
 
-        app.executeCommand(app.findMenuCommandId("Cut"));   // Cut
-        comp.time = earliestKeyTime + shiftBySeconds;       // Move playhead
-        app.executeCommand(app.findMenuCommandId("Paste")); // Paste
+        app.executeCommand(app.findMenuCommandId('Cut')); // Cut
+        comp.time = earliestKeyTime + shiftBySeconds; // Move playhead
+        app.executeCommand(app.findMenuCommandId('Paste')); // Paste
     }
 
     /**
@@ -97,18 +111,19 @@
 
         // Now we check the markers after that
         marker++;
-        var markerKeys = layer.marker.numKeys // Important to lock down this number as we modify the array later
+        var markerKeys = layer.marker.numKeys; // Important to lock down this number as we modify the array later
         while (marker <= markerKeys) {
             // Find out the time difference between the marker and the matching voice marker
             var markerTime = layer.marker.keyTime(marker);
             var markerComment = layer.marker.keyValue(marker).comment;
             var timeDiff = secondsFromMatchingMarker(markerComment, markerTime);
-            if (timeDiff === -1) { // If timeDiff is -1, the voice layer doesnt have a matching marker
+            if (timeDiff === -1) {
+                // If timeDiff is -1, the voice layer doesnt have a matching marker
                 marker++;
                 continue;
             }
 
-            // Shift the keys 
+            // Shift the keys
             shiftLayerKeysFromTime(layer, markerTime, timeDiff);
 
             // Move markers accordingly
@@ -130,22 +145,24 @@
         app.beginUndoGroup('Update Markers and Align Animations');
 
         // Process all layers
-
         var layers = comp.layers;
-        for (var i = layers.length-1; i >= 1; i--) {
+        for (var i = layers.length - 1; i >= 1; i--) {
             var layer = layers[i];
             var isPrecomp = layer.source instanceof CompItem;
             if (!isPrecomp) continue;
 
-            // Adjust timing of the layer by first moving it, and shifting any necessary keyframes
-            // Keep track of how much the layer moved, and move the layers on top as well
-            var originalLayerStart = layer.startTime;
+            // Since moving keyframes impacts where the layer should end (for example 1 second after the last animation),
+            // we make sure to keep this gap after adjusting.
+            // Then, layers above are moved depending on how much the outPoint was moved
+            var originalLayerOut = layer.outPoint; // To track how much the layer moved
+            var originalSpaceToOutPoint = secondsToOutPointFromLastKey(layer);
             timeWithAudio(layer);
-            var timeDifference = layer.startTime - originalLayerStart;
-            for (var j = i-1; j >= 1; j--) {
-                layers[j].startTime += timeDifference;
+            var toAdjust = originalSpaceToOutPoint - secondsToOutPointFromLastKey(layer);
+            layer.outPoint += toAdjust; // Keep the same gap between the last keyframe as before the adjustment
+            var outPointMovement = layer.outPoint - originalLayerOut;
+            for (var j = i - 1; j >= 1; j--) { // Adjust the layers above
+                layers[j].startTime += outPointMovement;
             }
-
         }
         app.endUndoGroup();
     }
