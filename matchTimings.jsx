@@ -2,6 +2,7 @@
     var AUDIO_TRACK_NAME = 'Voiceover';
     var comp = app.project.activeItem;
     var voiceoverLayer = comp.layer(AUDIO_TRACK_NAME);
+    var voiceMarkerIndex = 1;
 
     function getProperties(layer) {
         var properties = [];
@@ -88,7 +89,7 @@
     /**
      * Main function that does the work
      */
-    function alignKeyedAnimations(layer) {
+    function timeWithAudio(layer) {
         // The first alignment happens by moving the entire layer
         var marker = alignLayerByFirstMatchingMarker(layer);
         if (marker === -1) return;
@@ -130,12 +131,20 @@
         // Process all layers
 
         var layers = comp.layers;
-        for (var i = 1; i <= layers.length; i++) {
+        for (var i = layers.length-1; i >= 1; i--) {
             var layer = layers[i];
             var isPrecomp = layer.source instanceof CompItem;
             if (!isPrecomp) continue;
 
-            alignKeyedAnimations(layer);
+            // Adjust timing of the layer by first moving it, and shifting any necessary keyframes
+            // Keep track of how much the layer moved, and move the layers on top as well
+            var originalLayerStart = layer.startTime;
+            timeWithAudio(layer);
+            var timeDifference = layer.startTime - originalLayerStart;
+            for (var j = i-1; j >= 1; j--) {
+                layers[j].startTime += timeDifference;
+            }
+
         }
         app.endUndoGroup();
     }
