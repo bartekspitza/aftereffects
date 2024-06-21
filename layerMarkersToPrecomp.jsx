@@ -19,12 +19,6 @@
 
         app.beginUndoGroup("Transfer Markers");
 
-        // Remove existing markers in the precomp
-        var precompMarkers = precomp.markerProperty;
-        for (var i = precompMarkers.numKeys; i >= 1; i--) {
-            precompMarkers.removeKey(i);
-        }
-
         // Transfer markers from the precomp layer to the precomp
         var layerMarkers = precompLayer.property("Marker");
 
