@@ -106,11 +106,12 @@
      */
     function timeWithAudio(layer) {
         // The first alignment happens by moving the entire layer
-        var marker = alignLayerByFirstMatchingMarker(layer);
-        if (marker === -1) return;
+        //var marker = alignLayerByFirstMatchingMarker(layer);
+        //if (marker === -1) return;
 
         // Now we check the markers after that
-        marker++;
+
+        var marker = 1;
         var markerKeys = layer.marker.numKeys; // Important to lock down this number as we modify the array later
         while (marker <= markerKeys) {
             // Find out the time difference between the marker and the matching voice marker
@@ -128,10 +129,10 @@
 
             // Move markers accordingly
             for (var i = marker; i <= markerKeys; i++) {
-                var marker = layer.marker.keyValue(i);
+                var markerToMove = layer.marker.keyValue(i);
                 var newMarkerStart = layer.marker.keyTime(i) + timeDiff;
                 layer.marker.removeKey(i);
-                layer.marker.setValueAtTime(newMarkerStart, marker);
+                layer.marker.setValueAtTime(newMarkerStart, markerToMove);
             }
             marker++;
         }
@@ -151,18 +152,7 @@
             var isPrecomp = layer.source instanceof CompItem;
             if (!isPrecomp) continue;
 
-            // Since moving keyframes impacts where the layer should end (for example 1 second after the last animation),
-            // we make sure to keep this gap after adjusting.
-            // Then, layers above are moved depending on how much the outPoint was moved
-            var originalLayerOut = layer.outPoint; // To track how much the layer moved
-            var originalSpaceToOutPoint = secondsToOutPointFromLastKey(layer);
             timeWithAudio(layer);
-            var toAdjust = originalSpaceToOutPoint - secondsToOutPointFromLastKey(layer);
-            layer.outPoint += toAdjust; // Keep the same gap between the last keyframe as before the adjustment
-            var outPointMovement = layer.outPoint - originalLayerOut;
-            for (var j = i - 1; j >= 1; j--) { // Adjust the layers above
-                layers[j].startTime += outPointMovement;
-            }
         }
         app.endUndoGroup();
     }
