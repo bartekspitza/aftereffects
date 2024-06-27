@@ -36,9 +36,9 @@
             if (marker.comment.length > 1) {
                 layer.marker.setValueAtTime(lastEnd, marker);
             }
-            if (markers.keyValue(i+1).comment.length > 1) { // The end marker of the animation
-                layer.marker.setValueAtTime(lastEnd + duration, markers.keyValue(i+1));
-            }
+            //if (markers.keyValue(i+1).comment.length > 1) { // The end marker of the animation
+                //layer.marker.setValueAtTime(lastEnd + duration, markers.keyValue(i+1));
+            //}
 
             timeRemap.setValueAtTime(lastEnd, markerStart);
             timeRemap.setValueAtTime(lastEnd + duration, markerEnd);

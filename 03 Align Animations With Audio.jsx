@@ -112,8 +112,8 @@
         // Now we check the markers after that
 
         var marker = 1;
-        var markerKeys = layer.marker.numKeys; // Important to lock down this number as we modify the array later
-        while (marker <= markerKeys) {
+        var numLayerMarkers = layer.marker.numKeys; // Important to lock down this number as we modify the array later
+        while (marker <= numLayerMarkers) {
             // Find out the time difference between the marker and the matching voice marker
             var markerTime = layer.marker.keyTime(marker);
             var markerComment = layer.marker.keyValue(marker).comment;
@@ -128,11 +128,13 @@
             shiftLayerKeysFromTime(layer, markerTime, timeDiff);
 
             // Move markers accordingly
-            for (var i = marker; i <= markerKeys; i++) {
-                var markerToMove = layer.marker.keyValue(i);
-                var newMarkerStart = layer.marker.keyTime(i) + timeDiff;
-                layer.marker.removeKey(i);
-                layer.marker.setValueAtTime(newMarkerStart, markerToMove);
+            var markerIndx = numLayerMarkers; // Start at the end and move backwards
+            while (markerIndx >= 1 && layer.marker.keyTime(markerIndx) >= markerTime) {
+                var markerToMove = layer.marker.keyValue(markerIndx);
+                var markerToMoveTime = layer.marker.keyTime(markerIndx);
+                layer.marker.removeKey(markerIndx);
+                layer.marker.setValueAtTime(markerToMoveTime + timeDiff, markerToMove);
+                markerIndx--;
             }
             marker++;
         }
