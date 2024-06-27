@@ -14,19 +14,6 @@
         }
     }
 
-    function setToggleHoldOnEveryOtherKey(property, fromIndex) {
-        // For readability, set the interpolation type to hold on the animation end markers
-        for (var i = fromIndex; i <= property.numKeys; i += 1) {
-            property.setInterpolationTypeAtKey(
-                i,
-                KeyframeInterpolationType.LINEAR,
-                i % 2 === 0
-                    ? KeyframeInterpolationType.HOLD
-                    : KeyframeInterpolationType.LINEAR
-            );
-        }
-    }
-
     function createKeyframes(layer, markers) {
         var timeRemap = layer.property('ADBE Time Remapping');
 
@@ -60,36 +47,6 @@
         colorizeKeys(timeRemap);
     }
 
-    function refreshKeyframes(layer, markers) {
-        var timeRemap = layer.property('ADBE Time Remapping');
-        var lastEnd = timeRemap.keyTime(timeRemap.numKeys);
-
-        // Create keyframes for each pair of markers
-        var startIndx = 1 + timeRemap.numKeys;
-        for (var i = startIndx; i <= markers.numKeys; i += 2) {
-            var markerStart = markers.keyTime(i); // The time of the marker that signals the start of the animation
-            var markerEnd = markers.keyTime(i + 1); // The time of the marker that signals the end of the animation
-            var marker = markers.keyValue(i);
-
-            var duration = markerEnd - markerStart; // The duration of the animation
-            lastEnd += secondsBetweenAnims;
-
-            // Add the source marker to the layer
-            if (marker.comment.length > 1) {
-                layer.marker.setValueAtTime(lastEnd, marker);
-            }
-
-            timeRemap.setValueAtTime(lastEnd, markerStart);
-            timeRemap.setValueAtTime(lastEnd + duration, markerEnd);
-
-            lastEnd += duration;
-        }
-
-        colorizeKeys(timeRemap);
-    }
-
-
-
     // Main function
     function main() {
         var activeItem = app.project.activeItem;
@@ -116,11 +73,13 @@
             }
 
             // Create or refresh
-            if (selectedLayer.timeRemapEnabled === true) {
-                refreshKeyframes(selectedLayer, precomp.markerProperty);
-            } else {
-                createKeyframes(selectedLayer, precomp.markerProperty);
+            selectedLayer.timeRemapEnabled = false;
+            var layerMarkers = selectedLayer.marker;
+            while (layerMarkers.numKeys > 0) {
+                layerMarkers.removeKey(1);
             }
+
+            createKeyframes(selectedLayer, precomp.markerProperty);
         }
 
         app.endUndoGroup();
