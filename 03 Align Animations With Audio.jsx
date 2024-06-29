@@ -95,10 +95,27 @@
                 property.setSelectedAtKey(j, true);
             }
         }
+        if (earliestKeyTime === Number.MAX_VALUE) return;
 
         app.executeCommand(app.findMenuCommandId('Cut')); // Cut
         comp.time = earliestKeyTime + shiftBySeconds; // Move playhead
         app.executeCommand(app.findMenuCommandId('Paste')); // Paste
+    }
+
+    function shiftMarkers(markerProperty, fromIndex, shiftBySeconds) {
+        // remove the markers we're going to move
+        var markers = []
+        var markerTimes = []
+        while (markerProperty.numKeys > (fromIndex-1)) {
+            markers.push(markerProperty.keyValue(markerProperty.numKeys));
+            markerTimes.push(markerProperty.keyTime(markerProperty.numKeys));
+            markerProperty.removeKey(markerProperty.numKeys);
+        }
+
+        // move the markers
+        for (var i = 0; i < markers.length; i++) {
+            markerProperty.setValueAtTime(markerTimes[i] + shiftBySeconds, markers[i]);
+        }
     }
 
     /**
@@ -118,7 +135,7 @@
             var markerTime = layer.marker.keyTime(marker);
             var markerComment = layer.marker.keyValue(marker).comment;
             var timeDiff = secondsFromMatchingMarker(markerComment, markerTime);
-            if (timeDiff === -1) {
+            if (timeDiff === -1 || timeDiff === 0) {
                 // If timeDiff is -1, the voice layer doesnt have a matching marker
                 marker++;
                 continue;
@@ -128,14 +145,7 @@
             shiftLayerKeysFromTime(layer, markerTime, timeDiff);
 
             // Move markers accordingly
-            var markerIndx = numLayerMarkers; // Start at the end and move backwards
-            while (markerIndx >= 1 && layer.marker.keyTime(markerIndx) >= markerTime) {
-                var markerToMove = layer.marker.keyValue(markerIndx);
-                var markerToMoveTime = layer.marker.keyTime(markerIndx);
-                layer.marker.removeKey(markerIndx);
-                layer.marker.setValueAtTime(markerToMoveTime + timeDiff, markerToMove);
-                markerIndx--;
-            }
+            shiftMarkers(layer.marker, marker, timeDiff);
             marker++;
         }
     }
