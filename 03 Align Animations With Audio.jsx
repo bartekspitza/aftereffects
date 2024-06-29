@@ -2,7 +2,6 @@
     var AUDIO_TRACK_NAME = 'Voiceover';
     var comp = app.project.activeItem;
     var voiceoverLayer = comp.layer(AUDIO_TRACK_NAME);
-    var voiceMarkerIndex = 1;
 
     function getProperties(layer) {
         var properties = [];
@@ -24,52 +23,19 @@
         return properties;
     }
 
-    function secondsToOutPointFromLastKey(layer) {
-        var properties = getProperties(layer);
-        var lastKeyTime = Number.MIN_VALUE;
-        for (var i = 0; i < properties.length; i++) {
-            var property = properties[i];
-            for (var j = property.numKeys; j >= 1; j--) {
-                var keyTime = property.keyTime(j);
-                if (keyTime > lastKeyTime) lastKeyTime = keyTime;
-            }
-        }
-
-        return layer.outPoint - lastKeyTime;
-    }
-
-    function alignLayerByFirstMatchingMarker(layer) {
-        var markers = layer.marker;
-        for (var i = voiceMarkerIndex; i <= markers.numKeys; i++) {
-            var markerComment = markers.keyValue(i).comment;
-            var markerTime = markers.keyTime(i);
-            var timeDiff = secondsFromMatchingMarker(markerComment, markerTime);
-            if (timeDiff === -1) continue;
-
-            layer.startTime += timeDiff;
-            return i;
-        }
-
-        return -1;
-    }
-
     /**
      * Returns the number of seconds from the supplied marker to the first matching marker
      * of the voiceover layer. If none is found, returns -1.
      */
-    function secondsFromMatchingMarker(markerComment, markerTime) {
-        if (markerComment.length === 0) return -1;
-
+    function secondsFromMatchingMarker(markerIndex, markerComment, markerTime) {
         var voiceMarkers = voiceoverLayer.marker;
-        for (var i = voiceMarkerIndex; i <= voiceMarkers.numKeys; i++) {
-            var voiceMarker = voiceMarkers.keyValue(i);
-            if (voiceMarker.comment === markerComment) {
-                voiceMarkerIndex++;
-                return voiceMarkers.keyTime(i) - markerTime;
-            }
-        }
 
-        return -1;
+        if (markerIndex > voiceMarkers.numKeys) return -1;
+        var voiceMarker = voiceMarkers.keyValue(markerIndex);
+
+        if (voiceMarker.comment !== markerComment) return -1;
+
+        return voiceMarkers.keyTime(markerIndex) - markerTime;
     }
 
     /**
@@ -104,9 +70,9 @@
 
     function shiftMarkers(markerProperty, fromIndex, shiftBySeconds) {
         // remove the markers we're going to move
-        var markers = []
-        var markerTimes = []
-        while (markerProperty.numKeys > (fromIndex-1)) {
+        var markers = [];
+        var markerTimes = [];
+        while (markerProperty.numKeys > fromIndex - 1) {
             markers.push(markerProperty.keyValue(markerProperty.numKeys));
             markerTimes.push(markerProperty.keyTime(markerProperty.numKeys));
             markerProperty.removeKey(markerProperty.numKeys);
@@ -122,31 +88,27 @@
      * Main function that does the work
      */
     function timeWithAudio(layer) {
-        // The first alignment happens by moving the entire layer
-        //var marker = alignLayerByFirstMatchingMarker(layer);
-        //if (marker === -1) return;
-
         // Now we check the markers after that
 
         var marker = 1;
         var numLayerMarkers = layer.marker.numKeys; // Important to lock down this number as we modify the array later
         while (marker <= numLayerMarkers) {
-            // Find out the time difference between the marker and the matching voice marker
             var markerTime = layer.marker.keyTime(marker);
             var markerComment = layer.marker.keyValue(marker).comment;
-            var timeDiff = secondsFromMatchingMarker(markerComment, markerTime);
-            if (timeDiff === -1 || timeDiff === 0) {
-                // If timeDiff is -1, the voice layer doesnt have a matching marker
-                marker++;
-                continue;
+
+            // Find out the time difference between the marker and the matching voice marker
+            var timeDiff = secondsFromMatchingMarker(marker, markerComment, markerTime);
+            marker++;
+            if (timeDiff === 0) continue;
+            if (timeDiff === -1) {
+                return;
             }
 
             // Shift the keys
             shiftLayerKeysFromTime(layer, markerTime, timeDiff);
 
             // Move markers accordingly
-            shiftMarkers(layer.marker, marker, timeDiff);
-            marker++;
+            shiftMarkers(layer.marker, marker - 1, timeDiff);
         }
     }
 
