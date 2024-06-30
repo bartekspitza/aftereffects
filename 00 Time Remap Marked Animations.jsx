@@ -14,6 +14,24 @@
         }
     }
 
+    /**
+     * @returns Whether the marker has a real comment, i.e. not just a number
+     */
+    function hasRealComment(marker) {
+        if (marker.comment === 'asdf') {
+            var s = marker.comment;
+        }
+
+        // Check if the comment is a number
+        for (var i = 0; i < marker.comment.length; i++) {
+            // check if is digit
+            if (marker.comment.charAt(i) < '0' || marker.comment.charAt(i) > '9') {
+                return true;
+            }
+        }
+        return false
+    }
+
     function createKeyframes(layer, markers) {
         var timeRemap = layer.property('ADBE Time Remapping');
 
@@ -38,7 +56,7 @@
             var duration = markerEnd - markerStart; // The duration of the animation
 
             // Add the source marker to the layer
-            if (marker.comment.length > 1) {
+            if (hasRealComment(marker)) {
                 layer.marker.setValueAtTime(lastEnd, marker);
             }
 
