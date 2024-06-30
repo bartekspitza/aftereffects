@@ -19,6 +19,10 @@
         return voiceMarkers.keyTime(markerIndex) - markerTime;
     }
 
+    /**
+     * Moves the animation
+     * @return The time at the end of the animation
+     */
     function moveAnimation(fromLayer, toLayer, markerIndex, atTime) {
         var fromTimeRemap = fromLayer.property('ADBE Time Remapping');
         var toTimeRemap = toLayer.property('ADBE Time Remapping');
@@ -37,6 +41,8 @@
         toTimeRemap.setLabelAtKey(toTimeRemap.nearestKeyIndex(atTime+animDuration), fromTimeRemap.keyLabel(timeRemapIndex+1));
 
         toMarkers.setValueAtTime(atTime, fromLayer.marker.keyValue(markerIndex));
+
+        return atTime + animDuration;
     }
 
     /**
@@ -71,6 +77,7 @@
 
         // Start at the first marker and match one by one
         var markerIndex = 1;
+        var lastAnimationEnd = -1;
         while (markerIndex <= layer.marker.numKeys) {
             var markerTime = layer.marker.keyTime(markerIndex);
             var markerComment = layer.marker.keyValue(markerIndex).comment;
@@ -83,7 +90,13 @@
             }
 
             // Shift the keys
-            moveAnimation(layer, duplicated, markerIndex, markerTime+timeDiff);
+            var animationStart = markerTime+timeDiff;
+            if (animationStart <= lastAnimationEnd) {
+                alert('Too tight: "' + markerComment + '"');
+                return;
+            }
+
+            lastAnimationEnd = moveAnimation(layer, duplicated, markerIndex, animationStart);
             markerIndex++;
         }
 
